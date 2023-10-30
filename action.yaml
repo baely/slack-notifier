@@ -4,11 +4,19 @@ description: "Receive Slacks notifications when a Github action fails"
 
 inputs:
   github_token:
-    description: "Required for checking job statuses"
+    description: "Required for accessing Github API"
+    required: true
+  github_repo:
+    description: "Required for accessing Github API"
+    required: true
+  commit_sha:
+    description: "Required for accessing action statuses"
     required: true
   slack_webhook:
     description: "Required for sending Slack notifications"
     required: true
+  required_checks:
+    description: "A comma separated list of required checks"
 
 runs:
   using: "docker"
