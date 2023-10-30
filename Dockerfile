@@ -4,12 +4,16 @@ WORKDIR /app
 
 COPY ./go.mod ./go.mod
 COPY ./go.sum ./go.sum
+
 COPY ./app.go ./app.go
+
 COPY ./internal ./internal
 COPY ./pkg ./pkg
 
+COPY ./vendor ./vendor
+
 RUN go mod download
-RUN go build -o /app/main .
+RUN go build -mod=vendor -o /app/main .
 
 FROM alpine
 
