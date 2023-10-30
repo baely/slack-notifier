@@ -1,0 +1,15 @@
+name: "Slack Notifier"
+author: "Bailey Butler"
+description: "Receive Slacks notifications when a Github action fails"
+
+inputs:
+  github_token:
+    description: "Required for checking job statuses"
+    required: true
+  slack_webhook:
+    description: "Required for sending Slack notifications"
+    required: true
+
+runs:
+  using: "docker"
+  image: "Dockerfile"

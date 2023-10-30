@@ -1,0 +1,15 @@
+name: "Slack Notifier"
+on:
+  pull_request:
+jobs:
+  notifier:
+    runs-on: ubuntu-latest
+    name: "Slack Notifier"
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+      - name: "Slack Notifier"
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
