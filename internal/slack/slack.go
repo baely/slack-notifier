@@ -7,13 +7,15 @@ import (
 	"net/http"
 )
 
-type SlackGHMessage struct {
-	Message string
+type Message struct {
+	Name       string `json:"name"`
+	Conclusion string `json:"conclusion"`
+	CheckUrl   string `json:"check_url"`
+	CommitUrl  string `json:"commit_url"`
 }
 
-func PostMessage(webhookURL string, message string) {
-	msg := SlackGHMessage{message}
-	b, _ := json.Marshal(msg)
+func PostMessage(webhookURL string, message Message) {
+	b, _ := json.Marshal(message)
 	r := bytes.NewReader(b)
 
 	resp, err := http.Post(webhookURL, "application/json", r)
