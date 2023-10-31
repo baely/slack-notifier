@@ -18,7 +18,8 @@ type Client struct {
 	owner, repo, slackWebhook string
 }
 
-func NewGHClient(token, repo, slackWebhook string) *Client {
+// NewClient creates a new GitHub client
+func NewClient(token, repo, slackWebhook string) *Client {
 	client := github.NewClient(nil).WithAuthToken(token)
 
 	owner := repo[:strings.Index(repo, "/")]
@@ -32,6 +33,7 @@ func NewGHClient(token, repo, slackWebhook string) *Client {
 	}
 }
 
+// handleActionCompletion handles the completion of a GitHub action
 func (c *Client) handleActionCompletion(check *github.CheckRun) {
 	log.Printf("Check %s conclusion: %s", check.GetName(), check.GetConclusion())
 
@@ -49,6 +51,7 @@ func (c *Client) handleActionCompletion(check *github.CheckRun) {
 	})
 }
 
+// waitForAction waits for a GitHub action to complete and then calls handleActionCompletion to handle the completion
 func (c *Client) waitForAction(wg *sync.WaitGroup, check *github.CheckRun) {
 	var cr *github.CheckRun
 	var err error
@@ -72,6 +75,7 @@ func (c *Client) waitForAction(wg *sync.WaitGroup, check *github.CheckRun) {
 	wg.Done()
 }
 
+// getAllChecks gets all GitHub actions for a commit
 func (c *Client) getAllChecks(sha string) ([]*github.CheckRun, error) {
 	ctx := context.Background()
 	crs := make([]*github.CheckRun, 0)
@@ -107,6 +111,7 @@ func (c *Client) getAllChecks(sha string) ([]*github.CheckRun, error) {
 	return crs, nil
 }
 
+// WaitForActions waits for all GitHub actions to complete
 func (c *Client) WaitForActions(sha, requiredChecksRaw string) error {
 	// Wait for all checks to at least be queued
 	log.Println("Waiting 15 seconds for checks to be queued")
@@ -131,6 +136,7 @@ func (c *Client) WaitForActions(sha, requiredChecksRaw string) error {
 	return nil
 }
 
+// parseRequiredChecks parses the required checks from a comma-separated string
 func parseRequiredChecks(requiredChecks string) set.Set[string] {
 	checks := strings.Split(requiredChecks, ",")
 	checksSet := set.NewSet[string]()
