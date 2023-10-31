@@ -11,7 +11,7 @@ type Message struct {
 	Name       string `json:"name"`
 	Conclusion string `json:"conclusion"`
 	HTMLURL    string `json:"html_url"`
-	HeadSHA    string `json:"head_sha"`
+	Commit     string `json:"head_sha"`
 }
 
 func PostMessage(webhookURL string, message Message) {

@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"github.com/baely/slack-notifier/internal/slack"
 	"github.com/baely/slack-notifier/pkg/set"
 	"github.com/google/go-github/v56/github"
@@ -38,11 +39,13 @@ func (c *Client) handleActionCompletion(check *github.CheckRun) {
 		return
 	}
 
+	commitUrl := fmt.Sprintf("https://github.com/%s/%s/commit/%s", c.owner, c.repo, check.GetHeadSHA())
+
 	slack.PostMessage(c.slackWebhook, slack.Message{
 		Name:       check.GetName(),
 		Conclusion: check.GetConclusion(),
 		HTMLURL:    check.GetHTMLURL(),
-		HeadSHA:    check.GetHeadSHA(),
+		Commit:     commitUrl,
 	})
 }
 
