@@ -10,8 +10,8 @@ import (
 type Message struct {
 	Name       string `json:"name"`
 	Conclusion string `json:"conclusion"`
-	HTMLURL    string `json:"html_url"`
-	Commit     string `json:"head_sha"`
+	CheckUrl   string `json:"check_url"`
+	CommitUrl  string `json:"commit_url"`
 }
 
 func PostMessage(webhookURL string, message Message) {

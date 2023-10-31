@@ -46,8 +46,8 @@ func (c *Client) handleActionCompletion(check *github.CheckRun) {
 	slack.PostMessage(c.slackWebhook, slack.Message{
 		Name:       check.GetName(),
 		Conclusion: check.GetConclusion(),
-		HTMLURL:    check.GetHTMLURL(),
-		Commit:     commitUrl,
+		CheckUrl:   check.GetHTMLURL(),
+		CommitUrl:  commitUrl,
 	})
 }
 
