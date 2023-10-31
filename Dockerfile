@@ -12,7 +12,6 @@ COPY ./pkg ./pkg
 
 COPY ./vendor ./vendor
 
-RUN go mod download
 RUN go build -mod=vendor -o /app/main .
 
 FROM alpine
