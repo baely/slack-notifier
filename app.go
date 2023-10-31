@@ -16,7 +16,7 @@ var (
 )
 
 func main() {
-	if githubToken == "" || slackWebhook == "" {
+	if githubToken == "" || githubRepo == "" || commitSha == "" || slackWebhook == "" {
 		log.Println("Missing required input variables")
 		os.Exit(1)
 	}
@@ -25,5 +25,9 @@ func main() {
 
 	ghClient := github.NewGHClient(githubToken, githubRepo, slackWebhook)
 
-	ghClient.WaitForActions(commitSha, requiredChecks)
+	err := ghClient.WaitForActions(commitSha, requiredChecks)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
 }

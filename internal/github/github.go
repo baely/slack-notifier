@@ -32,13 +32,18 @@ func NewGHClient(token, repo, slackWebhook string) *Client {
 }
 
 func (c *Client) handleActionCompletion(check *github.CheckRun) {
+	log.Printf("Check %s conclusion: %s", check.GetName(), check.GetConclusion())
+
 	if !(check.GetConclusion() == "failure" || check.GetConclusion() == "timed_out") {
 		return
 	}
 
-	log.Printf("Check %s failed", check.GetName())
-
-	slack.PostMessage(c.slackWebhook, "failed")
+	slack.PostMessage(c.slackWebhook, slack.Message{
+		Name:       check.GetName(),
+		Conclusion: check.GetConclusion(),
+		HTMLURL:    check.GetHTMLURL(),
+		HeadSHA:    check.GetHeadSHA(),
+	})
 }
 
 func (c *Client) waitForAction(wg *sync.WaitGroup, check *github.CheckRun) {
@@ -48,8 +53,11 @@ func (c *Client) waitForAction(wg *sync.WaitGroup, check *github.CheckRun) {
 		cr, _, err = c.Checks.GetCheckRun(context.Background(), c.owner, c.repo, check.GetID())
 		if err != nil {
 			log.Printf("Error while getting check run: %s", err)
+			wg.Done()
 			return
 		}
+
+		log.Printf("Check %s status: %s", cr.GetName(), cr.GetStatus())
 
 		if cr.GetStatus() == "completed" {
 			break
@@ -61,36 +69,63 @@ func (c *Client) waitForAction(wg *sync.WaitGroup, check *github.CheckRun) {
 	wg.Done()
 }
 
-func (c *Client) WaitForActions(sha, requiredChecksRaw string) {
-	time.Sleep(5 * time.Second)
-
-	requiredChecks := parseRequiredChecks(requiredChecksRaw)
-
+func (c *Client) getAllChecks(sha string) ([]*github.CheckRun, error) {
 	ctx := context.Background()
-	crs, _, err := c.Client.Checks.ListCheckRunsForRef(ctx, c.owner, c.repo, sha, nil)
-
+	crs := make([]*github.CheckRun, 0)
+	crsFirst, resp, err := c.Client.Checks.ListCheckRunsForRef(ctx, c.owner, c.repo, sha, nil)
 	if err != nil {
 		log.Printf("Error while getting check runs: %s", err)
-		return
+		return nil, err
 	}
 
-	if crs.GetTotal() == 0 {
+	if crsFirst.GetTotal() == 0 {
 		log.Println("No check runs found")
-		return
+		return crs, nil
 	}
 
-	wg := sync.WaitGroup{}
+	crs = append(crs, crsFirst.CheckRuns...)
 
-	for _, cr := range crs.CheckRuns {
-		if !requiredChecks.Contains(cr.GetName()) {
+	for {
+		if resp.NextPage == 0 {
+			break
+		}
+		var crsNext *github.ListCheckRunsResults
+		crsNext, resp, err = c.Client.Checks.ListCheckRunsForRef(ctx, c.owner, c.repo, sha, &github.ListCheckRunsOptions{
+			ListOptions: github.ListOptions{
+				Page: resp.NextPage,
+			},
+		})
+		if err != nil {
+			log.Printf("Error while getting check runs: %s", err)
+			return nil, err
+		}
+		crs = append(crs, crsNext.CheckRuns...)
+	}
+	return crs, nil
+}
+
+func (c *Client) WaitForActions(sha, requiredChecksRaw string) error {
+	// Wait for all checks to at least be queued
+	log.Println("Waiting 15 seconds for checks to be queued")
+	time.Sleep(15 * time.Second)
+
+	checkRuns, err := c.getAllChecks(sha)
+	if err != nil {
+		return err
+	}
+
+	requiredChecks := parseRequiredChecks(requiredChecksRaw)
+	wg := sync.WaitGroup{}
+	for _, cr := range checkRuns {
+		if requiredChecks.Len() > 0 && !requiredChecks.Contains(cr.GetName()) {
 			continue
 		}
-
 		wg.Add(1)
 		go c.waitForAction(&wg, cr)
 	}
-
 	wg.Wait()
+
+	return nil
 }
 
 func parseRequiredChecks(requiredChecks string) set.Set[string] {
