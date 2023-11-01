@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/go-github/v56/github"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/baely/slack-notifier/internal/slack"
 	"github.com/baely/slack-notifier/pkg/set"
@@ -51,27 +51,21 @@ func (c *Client) handleActionCompletion(check *github.CheckRun) {
 }
 
 // waitForAction waits for a GitHub action to complete and then calls handleActionCompletion to handle the completion
-func (c *Client) waitForAction(wg *sync.WaitGroup, check *github.CheckRun) {
-	defer wg.Done()
-	var cr *github.CheckRun
-	var err error
-	for {
-		cr, _, err = c.Checks.GetCheckRun(context.Background(), c.owner, c.repo, check.GetID())
+func (c *Client) waitForAction(check *github.CheckRun) error {
+	for ; ; time.Sleep(5 * time.Second) {
+		cr, _, err := c.Checks.GetCheckRun(context.Background(), c.owner, c.repo, check.GetID())
 		if err != nil {
 			log.Printf("Error while getting check run: %s", err)
-			wg.Done()
-			return
+			return err
 		}
 
 		log.Printf("Check %s status: %s", cr.GetName(), cr.GetStatus())
 
 		if cr.GetStatus() == "completed" {
-			break
+			c.handleActionCompletion(cr)
+			return nil
 		}
-
-		time.Sleep(5 * time.Second)
 	}
-	c.handleActionCompletion(cr)
 }
 
 // getAllChecks gets all GitHub actions for a commit
@@ -122,17 +116,16 @@ func (c *Client) WaitForActions(sha, requiredChecksRaw string) error {
 	}
 
 	requiredChecks := parseRequiredChecks(requiredChecksRaw)
-	wg := &sync.WaitGroup{}
+	errGroup := &errgroup.Group{}
 	for _, cr := range checkRuns {
 		if requiredChecks.Len() > 0 && !requiredChecks.Contains(cr.GetName()) {
 			continue
 		}
-		wg.Add(1)
-		go c.waitForAction(wg, cr)
+		errGroup.Go(func() error {
+			return c.waitForAction(cr)
+		})
 	}
-	wg.Wait()
-
-	return nil
+	return errGroup.Wait()
 }
 
 // parseRequiredChecks parses the required checks from a comma-separated string
