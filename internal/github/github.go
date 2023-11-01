@@ -3,13 +3,15 @@ package github
 import (
 	"context"
 	"fmt"
-	"github.com/baely/slack-notifier/internal/slack"
-	"github.com/baely/slack-notifier/pkg/set"
-	"github.com/google/go-github/v56/github"
 	"log"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/go-github/v56/github"
+
+	"github.com/baely/slack-notifier/internal/slack"
+	"github.com/baely/slack-notifier/pkg/set"
 )
 
 type Client struct {
@@ -22,13 +24,10 @@ type Client struct {
 func NewClient(token, repo, slackWebhook string) *Client {
 	client := github.NewClient(nil).WithAuthToken(token)
 
-	owner := repo[:strings.Index(repo, "/")]
-	repo = repo[strings.Index(repo, "/")+1:]
-
 	return &Client{
 		Client:       client,
-		owner:        owner,
-		repo:         repo,
+		owner:        strings.SplitN(repo, "/", 2)[0],
+		repo:         strings.SplitN(repo, "/", 2)[1],
 		slackWebhook: slackWebhook,
 	}
 }
@@ -53,6 +52,7 @@ func (c *Client) handleActionCompletion(check *github.CheckRun) {
 
 // waitForAction waits for a GitHub action to complete and then calls handleActionCompletion to handle the completion
 func (c *Client) waitForAction(wg *sync.WaitGroup, check *github.CheckRun) {
+	defer wg.Done()
 	var cr *github.CheckRun
 	var err error
 	for {
@@ -72,7 +72,6 @@ func (c *Client) waitForAction(wg *sync.WaitGroup, check *github.CheckRun) {
 		time.Sleep(5 * time.Second)
 	}
 	c.handleActionCompletion(cr)
-	wg.Done()
 }
 
 // getAllChecks gets all GitHub actions for a commit
@@ -123,13 +122,13 @@ func (c *Client) WaitForActions(sha, requiredChecksRaw string) error {
 	}
 
 	requiredChecks := parseRequiredChecks(requiredChecksRaw)
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	for _, cr := range checkRuns {
 		if requiredChecks.Len() > 0 && !requiredChecks.Contains(cr.GetName()) {
 			continue
 		}
 		wg.Add(1)
-		go c.waitForAction(&wg, cr)
+		go c.waitForAction(wg, cr)
 	}
 	wg.Wait()
 

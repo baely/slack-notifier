@@ -21,10 +21,12 @@ func PostMessage(webhookURL string, message Message) {
 	resp, err := http.Post(webhookURL, "application/json", r)
 	if err != nil {
 		log.Printf("Error while posting message: %s", err)
+		return
 	}
 
 	if resp.StatusCode != 200 {
 		log.Printf("Error while posting message: %s", resp.Status)
+		return
 	}
 
 	log.Printf("Message posted")
