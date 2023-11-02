@@ -52,7 +52,7 @@ func (c *Client) handleActionCompletion(check *github.CheckRun) {
 
 // waitForAction waits for a GitHub action to complete and then calls handleActionCompletion to handle the completion
 func (c *Client) waitForAction(check *github.CheckRun) error {
-	for ; ; time.Sleep(5 * time.Second) {
+	for _ = range time.Tick(5 * time.Second) {
 		cr, _, err := c.Checks.GetCheckRun(context.Background(), c.owner, c.repo, check.GetID())
 		if err != nil {
 			log.Printf("Error while getting check run: %s", err)
